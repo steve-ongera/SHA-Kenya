@@ -11,43 +11,46 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class CountySerializer(serializers.ModelSerializer):
-    member_count = serializers.SerializerMethodField(read_only=True)
-    facility_count = serializers.SerializerMethodField(read_only=True)
+    member_count = serializers.IntegerField(read_only=True, default=0)
+    facility_count = serializers.IntegerField(read_only=True, default=0)
 
     class Meta:
         model = County
         fields = ['id', 'name', 'code', 'created_at', 'member_count', 'facility_count']
-        read_only_fields = ['id', 'created_at', 'member_count', 'facility_count']
+        read_only_fields = ['id', 'created_at']
 
-    def get_member_count(self, obj):
-        return obj.members.count()
-
-    def get_facility_count(self, obj):
-        return obj.facilities.count()
+    def to_representation(self, instance):
+        rep = super().to_representation(instance)
+        rep['member_count'] = instance.members.count()
+        rep['facility_count'] = instance.facilities.count()
+        return rep
 
 
 class HealthFacilitySerializer(serializers.ModelSerializer):
     county_name = serializers.CharField(source='county.name', read_only=True)
-    claim_count = serializers.SerializerMethodField(read_only=True)
+    claim_count = serializers.IntegerField(read_only=True, default=0)
 
     class Meta:
         model = HealthFacility
         fields = [
-            'id', 'name', 'facility_code', 'facility_type', 'county', 'county_name',
+            'id', 'name', 'facility_code', 'facility_type',
+            'county', 'county_name',
             'address', 'phone', 'email', 'status', 'beds',
             'created_at', 'updated_at', 'claim_count',
         ]
         read_only_fields = ['id', 'created_at', 'updated_at', 'county_name', 'claim_count']
 
-    def get_claim_count(self, obj):
-        return obj.claims.count()
+    def to_representation(self, instance):
+        rep = super().to_representation(instance)
+        rep['claim_count'] = instance.claims.count()
+        return rep
 
 
 class MemberSerializer(serializers.ModelSerializer):
     county_name = serializers.CharField(source='county.name', read_only=True)
     full_name = serializers.CharField(read_only=True)
-    total_contributions = serializers.SerializerMethodField(read_only=True)
-    total_claims = serializers.SerializerMethodField(read_only=True)
+    total_contributions = serializers.FloatField(read_only=True, default=0)
+    total_claims = serializers.IntegerField(read_only=True, default=0)
 
     class Meta:
         model = Member
@@ -63,25 +66,27 @@ class MemberSerializer(serializers.ModelSerializer):
             'created_at', 'updated_at', 'total_contributions', 'total_claims',
         ]
 
-    def get_total_contributions(self, obj):
-        result = obj.contributions.filter(status='confirmed').aggregate(Sum('amount'))
-        return float(result['amount__sum'] or 0)
-
-    def get_total_claims(self, obj):
-        return obj.claims.count()
+    def to_representation(self, instance):
+        rep = super().to_representation(instance)
+        result = instance.contributions.filter(status='confirmed').aggregate(Sum('amount'))
+        rep['total_contributions'] = float(result['amount__sum'] or 0)
+        rep['total_claims'] = instance.claims.count()
+        return rep
 
 
 class ClaimSerializer(serializers.ModelSerializer):
     member_name = serializers.CharField(source='member.full_name', read_only=True)
     member_sha = serializers.CharField(source='member.sha_number', read_only=True)
     facility_name = serializers.CharField(source='facility.name', read_only=True)
-    processed_by_name = serializers.SerializerMethodField(read_only=True)
+    processed_by_name = serializers.SerializerMethodField()
 
     class Meta:
         model = Claim
         fields = [
-            'id', 'claim_number', 'member', 'member_name', 'member_sha',
-            'facility', 'facility_name', 'claim_type', 'diagnosis',
+            'id', 'claim_number',
+            'member', 'member_name', 'member_sha',
+            'facility', 'facility_name',
+            'claim_type', 'diagnosis',
             'admission_date', 'discharge_date',
             'total_amount', 'approved_amount',
             'status', 'rejection_reason',
@@ -90,12 +95,14 @@ class ClaimSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             'id', 'created_at', 'updated_at',
-            'member_name', 'member_sha', 'facility_name', 'processed_by_name',
+            'member_name', 'member_sha',
+            'facility_name', 'processed_by_name',
         ]
 
     def get_processed_by_name(self, obj):
         if obj.processed_by:
-            return f"{obj.processed_by.first_name} {obj.processed_by.last_name}".strip() or obj.processed_by.username
+            name = f"{obj.processed_by.first_name} {obj.processed_by.last_name}".strip()
+            return name or obj.processed_by.username
         return None
 
 
