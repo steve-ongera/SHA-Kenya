@@ -28,7 +28,15 @@ export default function Sidebar({ currentPath, navigate, collapsed, setCollapsed
       <nav className={`sidebar ${collapsed ? 'collapsed' : ''} ${mobileOpen ? 'mobile-open' : ''}`}>
         {/* Header */}
         <div className="sidebar-header">
-          <div className="sidebar-logo">SHA</div>
+          <div className="sidebar-logo">
+            <img
+              src="/logo.png"
+              alt="SHA Kenya"
+              style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: 'var(--radius-sm)' }}
+              onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
+            />
+            <span style={{ display: 'none', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>SHA</span>
+          </div>
           {!collapsed && (
             <div className="sidebar-brand">
               <h2>SHA Kenya</h2>
